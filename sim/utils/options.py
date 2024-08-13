@@ -8,10 +8,10 @@ import random
 class SingleOrList(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         if len(values) == 1:
-            # 只有一个值时，解析为单个浮点数
+            # When there is only one value, it is parsed as a single floating point number
             setattr(namespace, self.dest, float(values[0]))
         else:
-            # 多个值时，解析为浮点数列表
+            # When there are multiple values, they are parsed as a list of floating point numbers
             setattr(namespace, self.dest, [float(v) for v in values])
 
 def args_parser():
@@ -44,7 +44,7 @@ def args_parser():
     parser.add_argument('--batch-size', default=50, type=int, help='Mini-batch size')
     parser.add_argument('--seed', default=1234, type=int, help='Seed')
     parser.add_argument('--clip', default=0, type=int, help='Clip')
-    parser.add_argument('--log', default='Log', type=str, help='Log, Log/Print')
+    parser.add_argument('--log', default='', type=str, help='Log, Log/Print')
     parser.add_argument('--eval-num', default=1000, type=int, help='Number of evaluations')
     parser.add_argument('--tail-eval-num', default=0, type=int, help='Evaluating the tail # rounds')
     parser.add_argument('--device', default=0, type=int, help='Device')
@@ -56,10 +56,8 @@ def args_parser():
     return args
 
 if __name__ == '__main__':
-    # 使用 numpy 的 random.choice 方法生成数组
-    array = [random.choice([0, 1, 2]) for _ in range(30)]
-
-    print(array)
+    pass
+    
 
 
 # [0, 0, 0.3, 0, 0, 0.5, 0, 0, 0.3, 0, 0, 0, 0, 0.5, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0.5, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0, 0.5, 0, 0.3, 0.3, 0.3, 0.3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3, 0, 0, 0.5, 0, 0, 0.3, 0, 0, 0, 0, 0.5, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0.5, 0, 0, 0.3, 0, 0, 0.5, 0, 0, 0.3, 0, 0, 0, 0, 0.5, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0, 0, 0.3, 0, 0, 0, 0.5, 0, 0, 0, 0, 0, 0.3, 0, 0, 0.5, 0, 0, 0.3, 0, 0, 0, 0, 0.5, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0.5, 0, 0, 0, 0.3, 0, 0]

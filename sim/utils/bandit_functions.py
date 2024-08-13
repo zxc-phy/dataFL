@@ -20,11 +20,9 @@ def UpdateArmZs(allarms,selected_nodes):
             # arm.yhist = np.vstack((arm.yhist, rewards[arm.arm_id]))
         
 
-# 计算任何一个arm和均匀分布之间的距离
+# Calculate the distance between any arm and the uniform distribution
 def cal_divergence(train_labels, client_idcs, label_proportions):
     n_labels = train_labels.max().item() + 1  # Fixed typo here
-    # n_labels = n_labels.item()
-    # uniform = np.ones(n_labels) / n_labels
     uniform = label_proportions
     divergence = {}
     for i, idx in client_idcs.items():

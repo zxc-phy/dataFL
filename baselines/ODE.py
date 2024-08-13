@@ -35,12 +35,12 @@ num_class_dict = { 'mnist': 10, 'fashionmnist': 10, 'cifar10': 10, 'cifar100': 1
 # nohup python main_fedavg.py -M 10 -N 5 -m mlp -d mnist -s 1 -R 100 -K 10 --partition exdir --alpha 2 10 --optim sgd --lr 0.05 --lr-decay 0.9 --momentum 0 --batch-size 20 --seed 1234 --log Print &
 # nohup python main_fedavg.py -M 10 -N 5 -E 20 -m mlp -d mnist  -R 100 -K 10 -Zmax 5 --partition exdir --alpha 2 10 --optim sgd --lr 0.05 --lr-decay 0.9 --momentum 0 --batch-size 20 --seed 1234 --log Print &
 
-# 会有用吗
+
 torch.set_num_threads(4)
 setup_seed(args.seed)
 device = torch.device("cuda:{}".format(args.device) if torch.cuda.is_available() else "cpu")
 
-# 删去clip
+
 def customize_record_name(args):
     '''FedAvg_SNs10_MAs10_E5_K2_R4_mlp_mnist_alpha2,10.0_sgd0.001,1.0,0.0,0.0001_b20_seed1234.csv'''
     if args.partition == 'exdir':
@@ -73,7 +73,7 @@ def dirichlet_split_noniid(train_labels, alpha, n_clients):
     client_idcs = [torch.cat(idcs) for idcs in client_idcs]
     return client_idcs
 
-# 全部节点在某个episode存下来的数据，且为乱序排放
+
 def get_dataid(net_dataidx_map, SN_datasizes, SN_accumulative_dataratio):
     '''get disordering data id for selected nodes
     Args:
@@ -139,7 +139,7 @@ def main():
     datatype = args.datatype
     # SN = SensorNodes(args.M,square_size=100)\
     # Arm(self, arm_id, zinit, Zmax):zinit是初始值，Zmax是最大值
-    # 初始值取0还是最大值，目前取0？？？
+
     SNs = []
     for i in range(args.M):
         SNs = SNs + [Arm(i, args.Zmax, args.Zmax)]
@@ -158,11 +158,11 @@ def main():
 
     labels = [label for _, label in train_dataset]
 
-    # 统计每个类别的数据量
+
     num_classes = num_class_dict[args.d]
     label_counts = np.bincount(labels, minlength=num_classes)
 
-    # 计算每个类别的数据量在总数据量中的比例
+
     total_samples = len(labels)
     label_proportions = label_counts / total_samples
     # print('Train labels:', train_labels)
@@ -182,7 +182,7 @@ def main():
     server.setup_model(global_model.to(device))
     add_log('{}'.format(global_model), flag = args.log)
     
-    # 轨迹
+
     MA_SN_match = []
 
     start_time = time.time()
@@ -198,16 +198,6 @@ def main():
         MA.setup_criterion(torch.nn.CrossEntropyLoss())
         server.setup_optim_settings(lr=args.global_lr)
 
-        # slected_nodes = random.sample(range(args.M), args.N)
-        ### 主要的函数
-        # selected_nodes = server.select_nodes(SNs, episode, args.M, args.N, args.Zmax)
-        # print('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode))
-        # ### 分配MA到SN, 还没写
-        # episode_MA_SN = server.allign_MAs(selected_nodes,MA_SN_match)
-        # MA_SN_match.append(episode_MA_SN)
-        # add_log('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode), flag = args.log)
-
-        ### 采集数据，arm的设置
         SN_accumulative_dataratio = {}
         for arm in SNs:
             dataratio = arm.datafunct(arm.z)
@@ -306,7 +296,7 @@ def main():
                                 'train_loss' : train_losses.avg,  'train_top1' : train_top1.avg,  'train_top5' : train_top5.avg, 
                                 'train2_loss': train2_losses.avg, 'train2_top1': train2_top1.avg, 'train2_top5': train2_top5.avg,
                                 'test_loss'  : test_losses.avg,   'test_top1'  : test_top1.avg,   'test_top5'  : test_top5.avg })
-        # 每个episode最后做更新
+
         for arm in SNs:
             if arm.arm_id in selected_nodes:
                 arm.UpdatePosterior(arm.z,data_quality[arm.arm_id])

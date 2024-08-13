@@ -1,11 +1,10 @@
-'''FedAvg
+'''OFL: Online Federated Learning
 Refs:
 [1] https://github.com/chandra2thapa/SplitFed
 [2] https://github.com/AshwinRJ/Federated-Learning-PyTorch
 [3] https://github.com/lx10077/fedavgpy/
 [4] https://github.com/shaoxiongji/federated-learning
-[5] https://github.com/liyipeng00/convergence
-[2024 06 01]'''
+[2024 07 07]'''
 import torch
 import time
 import copy
@@ -30,14 +29,13 @@ from torch.distributions.dirichlet import Dirichlet
 args = args_parser()
 
 # nohup python main_fedavg.py -M 10 -N 5 -m mlp -d mnist -s 1 -R 100 -K 10 --partition exdir --alpha 2 10 --optim sgd --lr 0.05 --lr-decay 0.9 --momentum 0 --batch-size 20 --seed 1234 --log Print &
-# nohup python main_fedavg.py -M 10 -N 5 -E 20 -m mlp -d mnist  -R 100 -K 10 -Zmax 5 --partition exdir --alpha 2 10 --optim sgd --lr 0.05 --lr-decay 0.9 --momentum 0 --batch-size 20 --seed 1234 --log Print &
 num_class_dict = { 'mnist': 10, 'fashionmnist': 10, 'cifar10': 10, 'cifar100': 100, 'cinic10': 10, 'test': 4, 'svhn': 10, 'har': 6, 'animal': 10, 'ham':7}
-# 会有用吗
+
 torch.set_num_threads(4)
 setup_seed(args.seed)
 device = torch.device("cuda:{}".format(args.device) if torch.cuda.is_available() else "cpu")
 
-# 删去clip
+
 def customize_record_name(args):
     '''FedAvg_SNs10_MAs10_E5_K2_R4_mlp_mnist_alpha2,10.0_sgd0.001,1.0,0.0,0.0001_b20_seed1234.csv'''
     if args.partition == 'exdir':
@@ -50,7 +48,7 @@ def customize_record_name(args):
     return record_name
 record_name = customize_record_name(args)
 
-# 普通的dirichlet分布,
+
 def dirichlet_split_noniid(train_labels, alpha, n_clients):
     n_classes = train_labels.max() + 1
     label_distribution = Dirichlet(torch.full((n_clients,), alpha)).sample((n_classes,))
@@ -74,7 +72,7 @@ def dirichlet_split_noniid(train_labels, alpha, n_clients):
 
     
 
-# 全部节点在某个episode存下来的数据，且为乱序排放
+
 def get_dataid(net_dataidx_map, SN_datasizes, SN_accumulative_dataratio):
     '''get disordering data id for selected nodes
     Args:
@@ -96,14 +94,8 @@ def main():
     logconfig(name = record_name, flag = args.log)
     add_log('{}'.format(args),flag = args.log)
     add_log('record_name: {}'.format(record_name),flag = args.log)
-
-    # datatype = [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 0, 0]
-    # datatype = np.full(args.M,2)
     datatype = args.datatype
-
-    # SN = SensorNodes(args.M,square_size=100)\
-    # Arm(self, arm_id, zinit, Zmax):zinit是初始值，Zmax是最大值
-    # 初始值取0还是最大值，目前取0？？？
+  
     SNs = []
     for i in range(args.M):
         SNs = SNs + [Arm(i, args.Zmax, args.Zmax)]
@@ -111,13 +103,9 @@ def main():
     MA = FedClient()
     server = FedServer()
 
-    # noise_list = [random.choice([0.0, 0.1, 0.2, 0.3, 0.4, 0.5]) for _ in range(args.M)]
-    # noise_list = [arm.noise for arm in SNs]
-    # noise_list = [0.0, 0.3, 0.3, 0.2, 0.5, 0.5, 0.3, 0.3, 0.3, 0.1, 0.0, 0.2, 0.5, 0.0, 0.5, 0.1, 0.4, 0.1, 0.0, 0.3]
-    # noise_list = [0 for _ in range(args.M)]
     noise_list = args.noise
 
-    # dataidx_map (dict): { client id (int): data indices (numpy.ndarray) }, e.g., {0: [0,1,4], 1: [2,3,5]}
+
     train_dataset, test_dataset = build_dataset(args.d)
     net_dataidx_map = build_partition(args.d, args.M, args.partition, [args.alpha])
     
@@ -127,19 +115,15 @@ def main():
     labels = [label for _, label in train_dataset]
     # print('labels:', labels)
 
-    # 统计每个类别的数据量
+    # Count the amount of data for each category
     num_classes = num_class_dict[args.d]
     label_counts = np.bincount(labels, minlength=num_classes)
 
-    # 计算每个类别的数据量在总数据量中的比例
+    # Calculate the proportion of each category's data volume in the total data volume
     total_samples = len(labels)
     label_proportions = label_counts / total_samples
-    # print('Train labels:', train_labels)
-    # client_indices = dirichlet_split_noniid(train_labels, args.alpha, args.M)
 
-    # SN_datasizes (dict): { client id (int): data size (int) }, e.g., {0: 100, 1: 200}
     SN_datasizes = bandit.get_total_datasizes(net_dataidx_map, args.M)
-    # add_log('SN_datasizes: {}'.format(SN_datasizes), flag = args.log)
 
     # SN_divergence = {i: 0.0 for i in range(args.M)}
     SN_divergence = bandit.cal_divergence(train_labels, net_dataidx_map, label_proportions)
@@ -152,9 +136,6 @@ def main():
     global_model = build_model(model=args.m, dataset=args.d)
     server.setup_model(global_model.to(device))
     add_log('{}'.format(global_model), flag = args.log)
-    
-    # 轨迹
-    MA_SN_match = []
 
     start_time = time.time()
 
@@ -163,6 +144,7 @@ def main():
         explore_episode = int(args.M / args.N)
     else:
         explore_episode = int(args.M / args.N) + 1
+    # warm up
     for episode in range(0, explore_episode):
         add_log("------------------episode: {}------------------------------".format(episode),flag=args.log)
         # construct optim kit
@@ -172,25 +154,18 @@ def main():
         MA.setup_criterion(torch.nn.CrossEntropyLoss())
         server.setup_optim_settings(lr = args.global_lr)
 
-        # slected_nodes = random.sample(range(args.M), args.N)
-        ### 主要的函数
-        # 探索阶段
         if episode * args.N + args.N < args.M:
             selected_nodes = list(range(episode * args.N, episode * args.N + args.N))
         else:
             selected_nodes = list(range(episode * args.N, args.M)) + list(range(0, (episode * args.N + args.N) % args.M))
         print('selected_nodes:', selected_nodes)
-        # selected_nodes = server.select_nodes(SNs, episode, args.M, args.N, args.Zmax)
 
-        # ### 分配MA到SN, 还没写
-        # episode_MA_SN = server.allign_MAs(selected_nodes,MA_SN_match)
-        # MA_SN_match.append(episode_MA_SN)
         add_log('selected nodes: {} at episode {}'.format(selected_nodes, episode), flag = args.log)
-        # print('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode))
+        print('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode))
         
         
-        ### 采集数据，arm的设置,,,,,dict 
-        # SN_sccumulative_dataratio: {arm_id: dataratio}
+        # data collection
+        # SN_accumulative_dataratio: {arm_id: dataratio}
         SN_accumulative_dataratio = {}
         for arm in SNs:
             dataratio = arm.datafunct(arm.z)
@@ -198,21 +173,9 @@ def main():
             arm.datasize = int(SN_datasizes[arm.arm_id]*dataratio)
             quality_1 = arm.div/arm.datasize * 10000
             add_log('arm_id:{}, arm.z:{}, datasize:{}, arm.div:{}, arm.noise: {}, arm.quality: {}, arm.UCB: {}'.format(arm.arm_id,arm.z,arm.datasize, arm.div, arm.noise, quality_1, arm.ucb), flag = args.log)
-            add_log('arm.grad_hist:{}, arm.grad:{}'.format(arm.grad_hist, arm.grad), flag = args.log)
-            # print('arm_id:{}, arm.z:{}, dataratio:{}'.format(arm.arm_id,arm.z,dataratio))
-            add_log('arm.zhist:{}, arm.yhist:{}'.format(arm.zhist, arm.yhist), flag = args.log)
-
-        # 观察调试
-        # z_list = [arm.z for arm in SNs]
-        # print('z_list:{} at episode'.format(z_list))
-        # SN_accumulative_dataratio = SN.accumulative_dataratio(selected_nodes,episode)
             
         episode_dataidx_map = get_dataid(net_dataidx_map,SN_datasizes,SN_accumulative_dataratio)
 
-        # datasize_selected = [len(episode_dataidx_map[i]) for i in selected_nodes]
-        # print('datasize_selected:{} at episode'.format(datasize_selected))
-
-        # train_feddaset.fedsets[i](list): [i上的数据]
         train_feddataset = FedDataset(train_dataset, episode_dataidx_map)
         MA.setup_train_dataset(train_feddataset)
         MA.setup_test_dataset(test_dataset)
@@ -270,18 +233,14 @@ def main():
                                 'train_loss' : train_losses.avg,  'train_top1' : train_top1.avg,  'train_top5' : train_top5.avg, 
                                 'train2_loss': train2_losses.avg, 'train2_top1': train2_top1.avg, 'train2_top5': train2_top5.avg,
                                 'test_loss'  : test_losses.avg,   'test_top1'  : test_top1.avg,   'test_top5'  : test_top5.avg })
-        # 每个episode最后做更新
+        # update for GP model
         for arm in SNs:
             if arm.arm_id in selected_nodes:
                 # print(arm.z, data_quality[arm.arm_id])
                 arm.UpdatePosterior(arm.z,data_quality[arm.arm_id], grad_quality[arm.arm_id])
         bandit.UpdateArmZs(SNs, selected_nodes)    
 
-      
-
-    # for arm in SNs:
-    #     arm.z = args.Zmax
-
+    # PoI selection
     for episode in range(explore_episode, args.E):
         add_log("------------------episode: {}------------------------------".format(episode),flag=args.log)
         # construct optim kit
@@ -291,19 +250,10 @@ def main():
         MA.setup_criterion(torch.nn.CrossEntropyLoss())
         server.setup_optim_settings(lr=args.global_lr)
 
-        # slected_nodes = random.sample(range(args.M), args.N)
-        ### 主要的函数
         selected_nodes = server.select_nodes(SNs, episode, args.M, args.N, args.Zmax,args.log)
         add_log('selected nodes: {} at episode {}'.format(selected_nodes, episode), flag = args.log)
-        # print('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode))
+        print('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode))
 
-
-        # ### 分配MA到SN, 还没写
-        # episode_MA_SN = server.allign_MAs(selected_nodes,MA_SN_match)
-        # MA_SN_match.append(episode_MA_SN)
-        # add_log('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode), flag = args.log)
-
-        ### 采集数据，arm的设置
         SN_accumulative_dataratio = {}
         for arm in SNs:
             dataratio = arm.datafunct(arm.z)
@@ -311,18 +261,7 @@ def main():
             arm.datasize = int(SN_datasizes[arm.arm_id]*dataratio)
             quality_1 = arm.div/arm.datasize * 10000
             add_log('arm_id:{}, arm.z:{}, datasize:{}, arm.div:{}, arm.noise: {}, arm.quality: {}, arm.UCB: {}'.format(arm.arm_id,arm.z,arm.datasize, arm.div, arm.noise, quality_1, arm.ucb), flag = args.log)
-            # print('arm_id:{}, arm.z:{}, dataratio:{}'.format(arm.arm_id,arm.z,dataratio))
-            add_log('arm.grad_hist:{}, arm.grad:{}'.format(arm.grad_hist, arm.grad), flag = args.log)
-            add_log('arm.zhist:{}, arm.yhist:{}'.format(arm.zhist, arm.yhist), flag = args.log)
-        # SN_accumulative_dataratio = SN.accumulative_dataratio(selected_nodes,episode)
-            
-        # z_list = [arm.z for arm in SNs]
-        # print('z_list:{} at episode'.format(z_list))
-        
         episode_dataidx_map = get_dataid(net_dataidx_map,SN_datasizes,SN_accumulative_dataratio)
-
-        # datasize_selected = [len(episode_dataidx_map[i]) for i in selected_nodes]
-        # print('datasize_selected:{} at episode'.format(datasize_selected))
 
         train_feddataset = FedDataset(train_dataset, episode_dataidx_map)
         MA.setup_train_dataset(train_feddataset)
@@ -381,7 +320,7 @@ def main():
                                 'train_loss' : train_losses.avg,  'train_top1' : train_top1.avg,  'train_top5' : train_top5.avg, 
                                 'train2_loss': train2_losses.avg, 'train2_top1': train2_top1.avg, 'train2_top5': train2_top5.avg,
                                 'test_loss'  : test_losses.avg,   'test_top1'  : test_top1.avg,   'test_top5'  : test_top5.avg })
-        # 每个episode最后做更新
+        # update GP model
         for arm in SNs:
             if arm.arm_id in selected_nodes:
                 arm.UpdatePosterior(arm.z,data_quality[arm.arm_id], grad_quality[arm.arm_id])

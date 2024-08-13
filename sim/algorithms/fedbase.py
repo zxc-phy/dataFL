@@ -51,13 +51,13 @@ def size_divergence(dataset, label_proportions):
 
 def get_model_gradients(model):
     """
-    获取模型的所有梯度，并以一个一维张量的形式输出。
-    
-    参数:
-        model (torch.nn.Module): 要获取梯度的模型
-        
-    返回:
-        torch.Tensor: 包含所有梯度的一个一维张量
+    Get all the gradients of the model and output them as a 1D tensor.
+
+    Parameters:
+      model (torch.nn.Module): the model to get the gradients of
+
+    Returns:
+      torch.Tensor: a 1D tensor containing all the gradients
     """
     gradients = []
     for param in model.parameters():
@@ -72,7 +72,6 @@ def Evaluate(dataset, model, device, label_proportions):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.01)
     if len(dataset) >= 512:
-    # if len(dataset) >= 1e10: # 调试用
         sub_indices = list(range(512))
         eval_subset = Subset(dataset, sub_indices)
         data_loader = DataLoader(eval_subset, batch_size=eval_batch_size, shuffle=True)
@@ -95,8 +94,6 @@ def Evaluate(dataset, model, device, label_proportions):
         var = torch.var(batch_grad, dim=0)
         # print('var: {}'.format(var))
         variance = torch.sum(var).item()
-        # 归一化
-        # print('grad_norm: {}, variance: {}'.format(grad_norm, variance))
         grad_quality = alpha * grad_norm + (1 - alpha) * variance
         grad_quality *= 0.01
     else:
@@ -119,7 +116,7 @@ class CustomDataset(Dataset):
             data = self.transform(data)
         return data, target
 
-# 自定义高斯噪声函数
+# Custom Gaussian noise function
 def add_gaussian_noise(tensor, mean=0.0, std=1.0):
     noise = torch.randn(tensor.size()) * std + mean
     noisy_tensor = tensor + noise
@@ -134,14 +131,14 @@ class AddGaussianNoise:
         noise = torch.randn(tensor.size()) * self.std + self.mean
         return tensor + noise
 
-# 其他时间序列变换的例子
+# Other examples of time series transformations
 class RandomHorizontalFlip:
     def __init__(self, p=0.5):
         self.p = p
 
     def __call__(self, tensor):
         if np.random.rand() < self.p:
-            return tensor.flip(-1)  # 水平翻转
+            return tensor.flip(-1)  
         return tensor
 
 class RandomCrop:
@@ -152,7 +149,6 @@ class RandomCrop:
         start = np.random.randint(0, tensor.size(-1) - self.crop_size + 1)
         return tensor[:, :, start:start+self.crop_size]
 
-# 将变换组合在一起
 class Compose:
     def __init__(self, transforms):
         self.transforms = transforms
@@ -183,18 +179,17 @@ class FedClient():
     def local_update_step(self, round, c_id, std, model, num_steps, device, label_proportions, **kwargs):
         dataset=self.train_feddataset.get_dataset(c_id)
 
-        # 定义额外的转换
         if args.d != 'har':
             additional_transform = transforms.Compose([
-                transforms.RandomHorizontalFlip(),  # 例如，随机水平翻转
-                transforms.RandomCrop(32, padding=4),  # 例如，随机裁剪
-                transforms.Lambda(lambda x: add_gaussian_noise(x, mean=0.0, std=std))  # 例如，添加高斯噪声
+                transforms.RandomHorizontalFlip(),  
+                transforms.RandomCrop(32, padding=4),  
+                transforms.Lambda(lambda x: add_gaussian_noise(x, mean=0.0, std=std))  # add gausian noise
             ])
         else:
             additional_transform = Compose([
                 RandomHorizontalFlip(p=0.5),
-                AddGaussianNoise(mean=0.0, std=std),  # 调整标准差以适应时间序列数据
-                RandomCrop(crop_size=500)  # 这里的 crop_size 需要根据实际情况调整
+                AddGaussianNoise(mean=0.0, std=std),  
+                RandomCrop(crop_size=500) 
             ])
 
         custom_dataset = CustomDataset(dataset, transform=additional_transform)
@@ -220,16 +215,11 @@ class FedClient():
                 optimizer.zero_grad()
                 loss.backward()
 
-                # if 'clip' in kwargs.keys() and kwargs['clip'] > 0:
-                #     total_norm = torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=kwargs['clip'])
-
                 optimizer.step()
-            # 若干个epoch
             step_count += 1
             if (step_count >= num_steps):
                 break
-            # if (step_count >= num_steps):
-            #     break
+
         with torch.no_grad():
             curr_vec = torch.nn.utils.parameters_to_vector(model.parameters())
             prev_vec = torch.nn.utils.parameters_to_vector(prev_model.parameters())
@@ -239,7 +229,6 @@ class FedClient():
             assert step_count == num_steps            
             # add log
             local_log = {}
-            # local_log = {'total_norm': total_norm} if 'clip' in kwargs.keys() and kwargs['clip'] > 0 else local_log
             return delta_vec, local_log, data_quality, grad_quality
 
     def local_update_epoch(self, client_model,data, epoch, batchsize):
@@ -307,17 +296,14 @@ class FedServer():
     def select_nodes(self, arms, t, M, N, Z, log_flag):
         for arm in arms:
             CalcUCB(arm, arm.z, t, M, Z)
-            # 如果z为0，则将UCB设置为一个很大的值。这个值可以一点点往下调
-            # add_log('arm_id{}预测UCB值：{}, arm.z:{}'.format(arm.arm_id, arm.ucb,arm.z),flag=log_flag)
-            if(arm.z == 0) or (arm.noise == 0.5):
+            # If z is 0, then UCB is set to a large value
+            if(arm.z == 0):
                 arm.ucb = 1e10
-        # 获取具有最大UCB值的K个臂
+        # Get the K arms with the largest UCB value
         top_N_arms = nsmallest(N, arms, key=attrgetter('ucb'))
-        list1 = [arm.arm_id for arm in top_N_arms]
-        # list2 = random.sample(range(0,args.M), 2)
-        # list = list1+list2
-        return list1
-        # [arm.arm_id for arm in top_N_arms] 
+        list = [arm.arm_id for arm in top_N_arms]
+        return list
+ 
                 
                 
                 

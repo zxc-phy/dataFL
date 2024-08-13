@@ -8,7 +8,7 @@ import random
 # define variance of noise in observations
 noisevar = 0.01
 
-# 定义数据产生的函数,在0处取得0，在20处取得最大值1，方便进行缩放
+# Define the function that generates the data, get 0 at 0 and the maximum value 1 at 20, which is convenient for scaling
 def linear_func(z):
     return z/20.0
 def sigmoid_function(z):
@@ -41,7 +41,6 @@ class Arm:
         self.ucb = 0.0
         self.qual = 0.0
         self.model = None
-        # 应该选用什么kernel？参数需要改
         self.kernel = GPy.kern.RBF(input_dim=1, variance=1., lengthscale=2.5)
         
         
@@ -56,7 +55,7 @@ class Arm:
                                                  kernel=self.kernel, noise_var = self.noisevar)
         else:
             self.model.set_XY(self.zhist, self.yhist)
-        #  优化模型的超参数 20241211 加入
+        #  Optimizing model hyperparameters
         self.model.optimize(messages=True)
 
     # datatype_dict {0: linear_func, 1: sigmoid_function, 2: power_function}
@@ -69,7 +68,6 @@ class Arm:
             y = power_function(z*20.0/self.Zmax)
         return y
     
-    # 不轻易使用
     def reset(self):
         self.z = self.zinit
         self.numplays = 0.0

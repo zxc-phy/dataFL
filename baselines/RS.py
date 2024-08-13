@@ -29,15 +29,13 @@ from torch.distributions.dirichlet import Dirichlet
 
 args = args_parser()
 num_class_dict = { 'mnist': 10, 'fashionmnist': 10, 'cifar10': 10, 'cifar100': 100, 'cinic10': 10, 'test': 4, 'svhn': 10, 'har': 6, 'animal': 10, 'ham':7}
-# nohup python main_fedavg.py -M 10 -N 5 -m mlp -d mnist -s 1 -R 100 -K 10 --partition exdir --alpha 2 10 --optim sgd --lr 0.05 --lr-decay 0.9 --momentum 0 --batch-size 20 --seed 1234 --log Print &
-# nohup python main_fedavg.py -M 10 -N 5 -E 20 -m mlp -d mnist  -R 100 -K 10 -Zmax 5 --partition exdir --alpha 2 10 --optim sgd --lr 0.05 --lr-decay 0.9 --momentum 0 --batch-size 20 --seed 1234 --log Print &
 
-# 会有用吗
+
 torch.set_num_threads(4)
 setup_seed(args.seed)
 device = torch.device("cuda:{}".format(args.device) if torch.cuda.is_available() else "cpu")
 
-# 删去clip
+
 def customize_record_name(args):
     '''FedAvg_SNs10_MAs10_E5_K2_R4_mlp_mnist_alpha2,10.0_sgd0.001,1.0,0.0,0.0001_b20_seed1234.csv'''
     if args.partition == 'exdir':
@@ -50,7 +48,7 @@ def customize_record_name(args):
     return record_name
 record_name = customize_record_name(args)
 
-# 普通的dirichlet分布,
+
 def dirichlet_split_noniid(train_labels, alpha, n_clients):
     n_classes = train_labels.max() + 1
     label_distribution = Dirichlet(torch.full((n_clients,), alpha)).sample((n_classes,))
@@ -74,7 +72,7 @@ def dirichlet_split_noniid(train_labels, alpha, n_clients):
 
     
 
-# 全部节点在某个episode存下来的数据，且为乱序排放
+
 def get_dataid(net_dataidx_map, SN_datasizes, SN_accumulative_dataratio):
     '''get disordering data id for selected nodes
     Args:
@@ -100,9 +98,6 @@ def main():
     # datatype = [0, 2, 0, 2, 1, 2, 0, 1, 1, 1, 2, 1, 0, 2, 2, 0, 0, 2, 0, 0]
     # datatype = np.full(args.M,2)
     datatype = args.datatype
-    # SN = SensorNodes(args.M,square_size=100)\
-    # Arm(self, arm_id, zinit, Zmax):zinit是初始值，Zmax是最大值
-    # 初始值取0还是最大值，目前取0？？？
     SNs = []
     for i in range(args.M):
         SNs = SNs + [Arm(i, args.Zmax, args.Zmax)]
@@ -110,11 +105,9 @@ def main():
     MA = FedClient()
     server = FedServer()
 
-    # noise_list = [random.choice([0.0, 0.1, 0.2, 0.3, 0.4, 0.5]) for _ in range(args.M)]
-    # noise_list = [arm.noise for arm in SNs]
-    # noise_list = [0.0, 0.3, 0.3, 0.2, 0.5, 0.5, 0.3, 0.3, 0.3, 0.1, 0.0, 0.2, 0.5, 0.0, 0.5, 0.1, 0.4, 0.1, 0.0, 0.3]
+
     noise_list = args.noise
-    # dataidx_map (dict): { client id (int): data indices (numpy.ndarray) }, e.g., {0: [0,1,4], 1: [2,3,5]}
+
     train_dataset, test_dataset = build_dataset(args.d)
     net_dataidx_map = build_partition(args.d, args.M, args.partition, [args.alpha])
     
@@ -122,11 +115,9 @@ def main():
 
     labels = [label for _, label in train_dataset]
 
-    # 统计每个类别的数据量
     num_classes = num_class_dict[args.d]
     label_counts = np.bincount(labels, minlength=num_classes)
 
-    # 计算每个类别的数据量在总数据量中的比例
     total_samples = len(labels)
     label_proportions = label_counts / total_samples
     # print('Train labels:', train_labels)
@@ -148,7 +139,7 @@ def main():
     server.setup_model(global_model.to(device))
     add_log('{}'.format(global_model), flag = args.log)
     
-    # 轨迹
+
     MA_SN_match = []
 
     start_time = time.time()
@@ -164,8 +155,7 @@ def main():
         server.setup_optim_settings(lr = args.global_lr)
 
         # slected_nodes = random.sample(range(args.M), args.N)
-        ### 主要的函数
-        # 探索阶段
+
         # selected_nodes = random.sample(list(range(0,args.M)), args.N)
         # selected_nodes = list(range(episode * args.N, episode * args.N + args.N))
         # selected_nodes = server.select_nodes(SNs, episode, args.M, args.N, args.Zmax)
@@ -174,15 +164,11 @@ def main():
         else:
             selected_nodes = list(range(episode * args.N, args.M)) + list(range(0, (episode * args.N + args.N) % args.M))
 
-
-        # ### 分配MA到SN, 还没写
         # episode_MA_SN = server.allign_MAs(selected_nodes,MA_SN_match)
         # MA_SN_match.append(episode_MA_SN)
         add_log('selected nodes: {} at episode {}'.format(selected_nodes, episode), flag = args.log)
         # print('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode))
         
-        
-        ### 采集数据，arm的设置,,,,,dict 
         # SN_sccumulative_dataratio: {arm_id: dataratio}
         SN_accumulative_dataratio = {}
         for arm in SNs:
@@ -194,17 +180,9 @@ def main():
             # print('arm_id:{}, arm.z:{}, dataratio:{}'.format(arm.arm_id,arm.z,dataratio))
             add_log('arm.zhist:{}, arm.yhist:{}'.format(arm.zhist, arm.yhist), flag = args.log)
 
-        # 观察调试
-        # z_list = [arm.z for arm in SNs]
-        # print('z_list:{} at episode'.format(z_list))
-        # SN_accumulative_dataratio = SN.accumulative_dataratio(selected_nodes,episode)
             
         episode_dataidx_map = get_dataid(net_dataidx_map,SN_datasizes,SN_accumulative_dataratio)
 
-        # datasize_selected = [len(episode_dataidx_map[i]) for i in selected_nodes]
-        # print('datasize_selected:{} at episode'.format(datasize_selected))
-
-        # train_feddaset.fedsets[i](list): [i上的数据]
         train_feddataset = FedDataset(train_dataset, episode_dataidx_map)
         MA.setup_train_dataset(train_feddataset)
         MA.setup_test_dataset(test_dataset)
@@ -258,7 +236,6 @@ def main():
                                 'train_loss' : train_losses.avg,  'train_top1' : train_top1.avg,  'train_top5' : train_top5.avg, 
                                 'train2_loss': train2_losses.avg, 'train2_top1': train2_top1.avg, 'train2_top5': train2_top5.avg,
                                 'test_loss'  : test_losses.avg,   'test_top1'  : test_top1.avg,   'test_top5'  : test_top5.avg })
-        # 每个episode最后做更新
         for arm in SNs:
             if arm.arm_id in selected_nodes:
                 # print(arm.z, data_quality[arm.arm_id])
@@ -280,9 +257,6 @@ def main():
         server.setup_optim_settings(lr=args.global_lr)
 
         # slected_nodes = random.sample(range(args.M), args.N)
-        ### 主要的函数
-        # selected_nodes = server.select_nodes(SNs, episode, args.M, args.N, args.Zmax,args.log)
-        # selected_nodes = random.sample(list(range(0,args.M)), args.N)
         optional_set = [arm.arm_id for arm in SNs if (arm.z >= 2 and arm.noise != 0.5 and arm.arm_id < 30)]
         selected_nodes = random.sample(optional_set, args.N)
 
@@ -290,13 +264,6 @@ def main():
         add_log('selected nodes: {} at episode {}'.format(selected_nodes, episode), flag = args.log)
         # print('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode))
 
-
-        # ### 分配MA到SN, 还没写
-        # episode_MA_SN = server.allign_MAs(selected_nodes,MA_SN_match)
-        # MA_SN_match.append(episode_MA_SN)
-        # add_log('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode), flag = args.log)
-
-        ### 采集数据，arm的设置
         SN_accumulative_dataratio = {}
         for arm in SNs:
             dataratio = arm.datafunct(arm.z)
@@ -325,9 +292,6 @@ def main():
         for round in range(args.R):
             print(f"------------------round: {round}------------------------------")
             server.aggregate_reset()
-            # if round == 0:
-            #     for c_id in selected_nodes:
-            #         quality = MA.
             for c_id in selected_nodes:
                 local_delta, local_update_log, quality, quality_1 = MA.local_update_step(round, c_id=c_id,std=noise_list[c_id],model=copy.deepcopy(server.global_model),num_steps=args.K,device=device,label_proportions=label_proportions,clip=args.clip)
                 server.aggregate_update(local_delta,weight=MA.train_feddataset.get_datasetsize(c_id))
@@ -370,7 +334,6 @@ def main():
                                 'train_loss' : train_losses.avg,  'train_top1' : train_top1.avg,  'train_top5' : train_top5.avg, 
                                 'train2_loss': train2_losses.avg, 'train2_top1': train2_top1.avg, 'train2_top5': train2_top5.avg,
                                 'test_loss'  : test_losses.avg,   'test_top1'  : test_top1.avg,   'test_top5'  : test_top5.avg })
-        # 每个episode最后做更新
         for arm in SNs:
             if arm.arm_id in selected_nodes:
                 arm.UpdatePosterior(arm.z,data_quality[arm.arm_id])
