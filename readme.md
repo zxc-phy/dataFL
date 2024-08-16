@@ -18,4 +18,4 @@ You can specify the datasets, models and other hyperparameters in `./sim/utils/o
 
 ## OFL-UD^2
 
-To execute the command, just run `python ./sim/OFL.py`, and you will get the change of test accuracy during training. If you need to visualize the output, you can find the corresponding `csv` file in the `./save` folder and plot it. All baselines are stored in the `./baselines` folder. The parameters in the experiment are placed in `options.py`, and you can use the default parameters or modify them at runtime by specifying methods such as `-d cifar10`.
+To execute the command, just run `python ./OFL.py`, and you will get the change of test accuracy during training. If you need to visualize the output, you can find the corresponding `csv` file in the `./save` folder and plot it. All baselines are stored in the `./baselines` folder. The parameters in the experiment are placed in `options.py`, and you can use the default parameters or modify them at runtime by specifying methods such as `-d cifar10`.
