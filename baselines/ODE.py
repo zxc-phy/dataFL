@@ -31,7 +31,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Subset, Dataset
 
 args = args_parser()
-num_class_dict = { 'mnist': 10, 'fashionmnist': 10, 'cifar10': 10, 'cifar100': 100, 'cinic10': 10, 'test': 4, 'svhn': 10, 'har': 6, 'animal': 10, 'ham':7}
+num_class_dict = { 'mnist': 10, 'fashionmnist': 10, 'cifar10': 10, 'cifar100': 100, 'cinic10': 10, 'test': 4, 'svhn': 10, 'har': 6, 'animal': 10, 'ham':7, 'aqi': 6}
 # nohup python main_fedavg.py -M 10 -N 5 -m mlp -d mnist -s 1 -R 100 -K 10 --partition exdir --alpha 2 10 --optim sgd --lr 0.05 --lr-decay 0.9 --momentum 0 --batch-size 20 --seed 1234 --log Print &
 # nohup python main_fedavg.py -M 10 -N 5 -E 20 -m mlp -d mnist  -R 100 -K 10 -Zmax 5 --partition exdir --alpha 2 10 --optim sgd --lr 0.05 --lr-decay 0.9 --momentum 0 --batch-size 20 --seed 1234 --log Print &
 

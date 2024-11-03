@@ -31,7 +31,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Subset, Dataset
 
 args = args_parser()
-num_class_dict = { 'mnist': 10, 'fashionmnist': 10, 'cifar10': 10, 'cifar100': 100, 'cinic10': 10, 'test': 4, 'svhn': 10, 'har': 6, 'animal': 10, 'ham':7}
+num_class_dict = { 'mnist': 10, 'fashionmnist': 10, 'cifar10': 10, 'cifar100': 100, 'cinic10': 10, 'test': 4, 'svhn': 10, 'har': 6, 'animal': 10, 'ham':7, 'aqi': 6}
 
 
 torch.set_num_threads(4)
