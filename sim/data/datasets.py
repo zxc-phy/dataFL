@@ -25,6 +25,31 @@ def build_dataset(dataset_name='mnist', dataset_dir = '../datasets/'):
         train_dataset, test_dataset = dataset_animal(dataset_dir)
     elif dataset_name == 'ham':
         train_dataset, test_dataset = dataset_ham(dataset_dir)
+    elif dataset_name == 'aqi':
+        train_dataset, test_dataset = dataset_aqi(dataset_dir)
+    return train_dataset, test_dataset
+
+def dataset_aqi(data_path):
+    transform = transforms.Compose([
+            transforms.Resize((64, 64)),
+            transforms.ToTensor()
+            ])
+    torch.manual_seed(1234)
+    torch.cuda.manual_seed_all(1234)
+    torch.backends.cudnn.deterministic = True
+    full_dataset = datasets.ImageFolder(data_path + 'aqi', transform=transform)
+    train_size = int(0.75 * len(full_dataset))
+    test_size = len(full_dataset) - train_size
+    train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size])
+    # debug
+    # print(f"train_dataset: {train_dataset}")
+    # sample, label = train_dataset[0]
+    # print(f"train_dataset[0]: {sample.size()}, {label = }")
+    # print(f"test_dataset:  {test_dataset}")
+    # sample, label = test_dataset[0]
+    # print(f"test_dataset[0]:  {sample.size()}, {label = }")
+    import sys
+    # sys.exit(0)
     return train_dataset, test_dataset
 
 def dataset_ham(data_path):

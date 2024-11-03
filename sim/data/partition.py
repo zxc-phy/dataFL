@@ -327,7 +327,7 @@ def main():
     C = args.C
 
     # Prepare the dataset
-    num_class_dict = { 'mnist': 10, 'fashionmnist': 10, 'cifar10': 10, 'cifar100': 100, 'cinic10': 10, 'test': 4, 'svhn': 10, 'har': 6, 'animal': 10, 'ham':7}
+    num_class_dict = { 'mnist': 10, 'fashionmnist': 10, 'cifar10': 10, 'cifar100': 100, 'cinic10': 10, 'test': 4, 'svhn': 10, 'har': 6, 'animal': 10, 'ham':7, 'aqi': 6 }
     train_dataset, test_dataset = build_dataset(dataset_name='cifar10', dataset_dir=dataset_dir)
     # if partitioning the trainining set merely
     labels = [label for _, label in train_dataset] # Note: `train_dataset.targets` is a list in cifar10/100 , but a tensor in mnist (yipeng, 2023-04-26)
