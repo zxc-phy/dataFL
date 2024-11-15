@@ -37,7 +37,8 @@ device = torch.device("cuda:{}".format(args.device) if torch.cuda.is_available()
 
 
 def customize_record_name(args):
-    '''FedAvg_SNs10_MAs10_E5_K2_R4_mlp_mnist_alpha2,10.0_sgd0.001,1.0,0.0,0.0001_b20_seed1234.csv'''
+    ''' Generate a customized filename for experiment records.
+    e.g., FedAvg_SNs10_MAs10_E5_K2_R4_mlp_mnist_alpha2,10.0_sgd0.001,1.0,0.0,0.0001_b20_seed1234.csv'''
     if args.partition == 'exdir':
         partition = f'{args.partition}{args.alpha[0]},{args.alpha[1]}'
     elif args.partition == 'iid':
@@ -50,6 +51,17 @@ record_name = customize_record_name(args)
 
 
 def dirichlet_split_noniid(train_labels, alpha, n_clients):
+    '''
+    Divide the data set based on Dirichlet distribution
+    Args:
+       train_labels (torch.Tensor): Labels of the training dataset.
+       alpha (float): Concentration parameter of the Dirichlet distribution.
+       n_clients (int): Number of clients to split the data between
+       
+    Returns:
+       list[torch.Tensor]: List of length n_clients, where each element is a tensor
+           containing the indices of data samples assigned to that client
+    '''
     n_classes = train_labels.max() + 1
     label_distribution = Dirichlet(torch.full((n_clients,), alpha)).sample((n_classes,))
     # 1. Get the index of each label
@@ -75,7 +87,10 @@ def dirichlet_split_noniid(train_labels, alpha, n_clients):
 
 def get_dataid(net_dataidx_map, SN_datasizes, SN_accumulative_dataratio):
     '''get disordering data id for selected nodes
-    Args:
+    Args: 
+       net_dataidx_map: dict, key is node ID, value is list of all data indices owned by that node
+       SN_datasizes: dict/list, total data size for each node  
+       SN_accumulative_dataratio: dict, key is node ID, value is cumulative data ratio for that node
     Returns: episode_dataidx_map: dict, key: node_id, value: data_idx
     '''
     episode_dataidx_map = {}
@@ -144,6 +159,9 @@ def main():
         explore_episode = int(args.M / args.N)
     else:
         explore_episode = int(args.M / args.N) + 1
+
+    explore_nodes = list(range(args.M))
+
     # warm up
     for episode in range(0, explore_episode):
         add_log("------------------episode: {}------------------------------".format(episode),flag=args.log)
@@ -154,11 +172,19 @@ def main():
         MA.setup_criterion(torch.nn.CrossEntropyLoss())
         server.setup_optim_settings(lr = args.global_lr)
 
-        if episode * args.N + args.N < args.M:
-            selected_nodes = list(range(episode * args.N, episode * args.N + args.N))
-        else:
-            selected_nodes = list(range(episode * args.N, args.M)) + list(range(0, (episode * args.N + args.N) % args.M))
+        # if episode * args.N + args.N < args.M:
+        #     selected_nodes = list(range(episode * args.N, episode * args.N + args.N))
+        # else:
+        #     selected_nodes = list(range(episode * args.N, args.M)) + list(range(0, (episode * args.N + args.N) % args.M))
+        # print('selected_nodes:', selected_nodes)
+
+        # Random exploration
+        selected_nodes = random.sample(explore_nodes, args.N)
+        for nodes in selected_nodes:
+            explore_nodes.remove(nodes)
+
         print('selected_nodes:', selected_nodes)
+
 
         add_log('selected nodes: {} at episode {}'.format(selected_nodes, episode), flag = args.log)
         print('--------------------selected nodes: {} at episode {}---------------------'.format(selected_nodes, episode))
@@ -226,13 +252,14 @@ def main():
                 add_log("Round {}'s server2 train acc: {:6.2f}%, train loss: {:.4f}".format(round+1, train2_top1.avg, train2_losses.avg), 'blue', flag=args.log)
                 print("Round {}'s server2 train acc: {:6.2f}%, train loss: {:.4f}".format(round+1, train2_top1.avg, train2_losses.avg))
                 # evaluate on test dataset
+                selected_nodes = np.array(selected_nodes)
                 test_losses, test_top1, test_top5 = MA.evaluate_dataset(model=server.global_model, dataset=MA.test_dataset, device=args.device)
                 add_log("Round {}'s server  test  acc: {:6.2f}%, test  loss: {:.4f}".format(round+1, test_top1.avg, test_losses.avg), 'red', flag=args.log)
                 print("Round {}'s server  test  acc: {:6.2f}%, test  loss: {:.4f}".format(round+1, test_top1.avg, test_losses.avg))
                 record_exp_result2(record_name, {'round':round+1,
                                 'train_loss' : train_losses.avg,  'train_top1' : train_top1.avg,  'train_top5' : train_top5.avg, 
                                 'train2_loss': train2_losses.avg, 'train2_top1': train2_top1.avg, 'train2_top5': train2_top5.avg,
-                                'test_loss'  : test_losses.avg,   'test_top1'  : test_top1.avg,   'test_top5'  : test_top5.avg })
+                                'test_loss'  : test_losses.avg,   'test_top1'  : test_top1.avg,   'test_top5'  : test_top5.avg, 'selected_node': selected_nodes })
         # update for GP model
         for arm in SNs:
             if arm.arm_id in selected_nodes:
@@ -313,13 +340,14 @@ def main():
 
                 print("Round {}'s server2 train acc: {:6.2f}%, train loss: {:.4f}".format(round+1, train2_top1.avg, train2_losses.avg))
                 # evaluate on test dataset
+                selected_nodes = np.array(selected_nodes)
                 test_losses, test_top1, test_top5 = MA.evaluate_dataset(model=server.global_model, dataset=MA.test_dataset, device=args.device)
                 add_log("Round {}'s server  test  acc: {:6.2f}%, test  loss: {:.4f}".format(round+1, test_top1.avg, test_losses.avg), 'red', flag=args.log)
                 print("Round {}'s server  test  acc: {:6.2f}%, test  loss: {:.4f}".format(round+1, test_top1.avg, test_losses.avg))
                 record_exp_result2(record_name, {'round':round+1,
                                 'train_loss' : train_losses.avg,  'train_top1' : train_top1.avg,  'train_top5' : train_top5.avg, 
                                 'train2_loss': train2_losses.avg, 'train2_top1': train2_top1.avg, 'train2_top5': train2_top5.avg,
-                                'test_loss'  : test_losses.avg,   'test_top1'  : test_top1.avg,   'test_top5'  : test_top5.avg })
+                                'test_loss'  : test_losses.avg,   'test_top1'  : test_top1.avg,   'test_top5'  : test_top5.avg, 'selected_node': selected_nodes })
         # update GP model
         for arm in SNs:
             if arm.arm_id in selected_nodes:
